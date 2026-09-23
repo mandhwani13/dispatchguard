@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Loading Dock Mobile Scanner - DispatchGuard{% endblock %}
+
+{% block head %}
+<!-- html5-qrcode Library CDN -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+    /* Laser scanline animation */
+    @keyframes scanline {
+        0% { top: 5%; opacity: 0.8; }
+        50% { top: 90%; opacity: 1; }
+        100% { top: 5%; opacity: 0.8; }
+    }
+    .scanner-laser {
+        position: absolute;
+        left: 5%;
+        right: 5%;
+        height: 2px;
+        background: linear-gradient(to right, transparent, #10b981, #34d399, transparent);
+        box-shadow: 0 0 8px 2px rgba(16, 185, 129, 0.7);
+        animation: scanline 2.2s infinite ease-in-out;
+        z-index: 10;
+        pointer-events: none;
+    }
+    #qr-reader video {
+        object-fit: cover !important;
+        border-radius: 1rem;
+    }
+    #qr-reader {
+        border: none !important;
+    }
+    #qr-reader__scan_region {
+        background: transparent !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-4">
+
+    <!-- Active Dispatch Order Selector Bar -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+            <label for="orderSelect" class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center space-x-1.5">
+                <i data-lucide="truck" class="w-4 h-4 text-emerald-600"></i>
+                <span>Active Truck Dispatch Order:</span>
+            </label>
+            <div class="flex items-center space-x-1.5">
+                <span id="cameraStatusDot" class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+                <span id="cameraStatusText" class="text-[11px] font-medium text-slate-500">Camera Offline</span>
+            </div>
+        </div>
+
+        <select id="orderSelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <option value="">-- Choose Truck / Order to Load --</option>
+            {% for o in active_orders %}
+            <option value="{{ o.id }}" {% if selected_order and selected_order.id == o.id %}selected{% endif %}>
+                {{ o.order_number }} • {{ o.customer_name }} ({{ o.vehicle_number or "No Vehicle" }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Live Scanned Tally HUD -->
+    <div class="bg-slate-900 text-white p-4 sm:p-5 rounded-2xl shadow-lg border border-slate-800 space-y-3 relative overflow-hidden">
+        <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold">LOADING DOCK LIVE TALLY</span>
+            <span id="selectedVehicleBadge" class="text-xs font-mono font-bold bg-slate-800 text-slate-200 px-2.5 py-0.5 rounded border border-slate-700">
+                {{ selected_order.vehicle_number if selected_order and selected_order.vehicle_number else "TRUCK NOT SELECTED" }}
+            </span>
+        </div>
+
+        <!-- Big Counters -->
+        <div class="grid grid-cols-2 gap-3 text-center pt-1">
+            <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Cartons Loaded</div>
+                <div class="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-1">
+                    <span id="tallyScannedCartons">{{ selected_order.scanned_cartons if selected_order else 0 }}</span>
+                    <span class="text-sm font-normal text-slate-400">/ <span id="tallyExpectedCartons">{{ selected_order.expected_cartons if selected_order else 0 }}</span></span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-mono mt-1" id="cartonPctText">
+                    {{ selected_order.carton_progress_pct if selected_order else 0 }}% Loaded
+                </div>
+            </div>
+
+            <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Pieces Loaded</div>
+                <div class="text-2xl sm:text-3xl font-black font-mono text-blue-400 mt-1">
+                    <span id="tallyScannedPieces">{{ selected_order.scanned_pieces if selected_order else 0 }}</span>
+                    <span class="text-sm font-normal text-slate-400">/ <span id="tallyExpectedPieces">{{ selected_order.expected_pieces if selected_order else 0 }}</span></span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-mono mt-1" id="piecePctText">
+                    {{ selected_order.piece_progress_pct if selected_order else 0 }}% Loaded
+                </div>
+            </div>
+        </div>
+
+        <!-- Dual Progress Bars -->
+        <div class="space-y-1.5 pt-1">
+            <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                <div id="cartonProgressBar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: {{ selected_order.carton_progress_pct if selected_order else 0 }}%"></div>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                <div id="pieceProgressBar" class="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style="width: {{ selected_order.piece_progress_pct if selected_order else 0 }}%"></div>
+            </div>
+        </div>
+
+        <!-- Gate Pass Ready Celebration Banner -->
+        <div id="orderCompleteCelebration" class="{% if not selected_order or not selected_order.is_fully_loaded %}hidden{% endif %} bg-emerald-500 text-slate-950 p-3 rounded-xl font-bold text-center space-y-2 mt-2">
+            <div class="flex items-center justify-center space-x-2 text-sm">
+                <i data-lucide="check-check" class="w-5 h-5"></i>
+                <span>100% RECONCILED & LOADED!</span>
+            </div>
+            <a id="gatePassActionBtn" href="/orders/{{ selected_order.id if selected_order else '#' }}/gate-pass" class="block w-full py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-lg text-xs font-black shadow-md uppercase tracking-wider">
+                Generate Digital Gate Pass →
+            </a>
+        </div>
+    </div>
+
+    <!-- Success Toast Floating Indicator -->
+    <div id="scanSuccessToast" class="hidden transition-opacity duration-300 bg-emerald-600 text-white p-3.5 rounded-xl shadow-lg flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-black">✓</div>
+        <div class="flex-1">
+            <div id="successToastMessage" class="text-sm font-bold">Box Verified & Loaded</div>
+            <div id="successToastDetail" class="text-xs text-emerald-100">Box # 1 • 50 Pieces</div>
+        </div>
+    </div>
+
+    <!-- Mobile Camera Viewport Container -->
+    <div class="bg-black rounded-2xl overflow-hidden relative shadow-xl border border-slate-800 min-h-[300px] flex items-center justify-center">
+        <!-- Html5Qrcode Camera Target -->
+        <div id="qr-reader" class="w-full h-full min-h-[280px]"></div>
+
+        <!-- Animated Laser Line Overlay -->
+        <div class="scanner-laser"></div>
+
+        <!-- Camera Control Action Overlay Buttons -->
+        <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between z-20 pointer-events-auto">
+            <div class="flex items-center space-x-2">
+                <button id="torchToggleBtn" type="button" class="w-10 h-10 rounded-full bg-slate-900/80 backdrop-blur text-white flex items-center justify-center shadow-lg border border-white/20 active:scale-95 transition-all" title="Toggle Flashlight">
+                    <i data-lucide="zap" class="w-5 h-5"></i>
+                </button>
+                <button id="flipCameraBtn" type="button" class="w-10 h-10 rounded-full bg-slate-900/80 backdrop-blur text-white flex items-center justify-center shadow-lg border border-white/20 active:scale-95 transition-all" title="Flip Camera">
+                    <i data-lucide="switch-camera" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button id="startCameraBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs shadow-lg flex items-center space-x-1.5 active:scale-95 transition-all">
+                    <i data-lucide="camera" class="w-4 h-4"></i>
+                    <span>Start Camera</span>
+                </button>
+                <button id="stopCameraBtn" type="button" class="hidden px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-lg flex items-center space-x-1.5 active:scale-95 transition-all">
+                    <i data-lucide="video-off" class="w-4 h-4"></i>
+                    <span>Stop Camera</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Code Fallback (Laser Scanner / Keyboard Wedge / Manual Entry) -->
+    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+        <form id="manualScanForm" class="flex items-center space-x-2">
+            <div class="relative flex-1">
+                <input type="text" id="manualPayloadInput" placeholder="Manual QR code / Laser input..." class="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <button type="reset" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
+                    <i data-lucide="delete" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold whitespace-nowrap shadow-sm">
+                Verify Scan
+            </button>
+        </form>
+    </div>
+
+    <!-- Live Scan Activity Feed -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center space-x-1.5">
+            <i data-lucide="history" class="w-3.5 h-3.5"></i>
+            <span>Recent Loading Dock Activity</span>
+        </h4>
+
+        <div id="recentScansFeed" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            {% if selected_order and selected_order.scan_logs %}
+                {% for log in selected_order.scan_logs[:5] %}
+                <div class="p-2.5 rounded-lg border text-xs flex items-center justify-between shadow-sm {% if log.scan_result == 'SUCCESS' %}bg-emerald-50 border-emerald-200 text-emerald-900{% else %}bg-red-50 border-red-200 text-red-900{% endif %}">
+                    <div class="flex items-center space-x-2 truncate">
+                        <span class="font-bold text-sm">{% if log.scan_result == 'SUCCESS' %}✓{% else %}✗{% endif %}</span>
+                        <span class="truncate font-medium">
+                            {% if log.scan_result == 'SUCCESS' %}
+                                Box Verified ({{ log.carton.piece_count if log.carton else "OK" }} pcs)
+                            {% else %}
+                                Scan Rejected: {{ log.scan_result }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <span class="text-[10px] text-gray-500 whitespace-nowrap ml-2">{{ log.created_at.strftime("%H:%M:%S") }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div id="noScansPlaceholder" class="text-center py-6 text-xs text-slate-400">
+                    No cartons scanned yet for this dispatch order.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Full-Screen Error Modal (Vivid Red Industrial Alert Screen) -->
+<div id="scanErrorModal" class="fixed inset-0 z-50 hidden bg-red-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center border-4 border-red-600 animate-bounce sm:animate-none">
+        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-red-300">
+            <i data-lucide="alert-octagon" class="w-10 h-10 stroke-[2.5]"></i>
+        </div>
+        
+        <h2 id="modalErrorTitle" class="text-xl font-black text-red-700 tracking-tight">SCAN REJECTED!</h2>
+        
+        <p id="modalErrorMessage" class="text-sm font-semibold text-slate-800 mt-2 px-1 leading-snug">
+            Duplicate scan or wrong dispatch order detected!
+        </p>
+
+        <div id="modalErrorCode" class="text-[11px] font-mono text-red-500 font-bold mt-2 uppercase">
+            CODE: REJECTED
+        </div>
+
+        <button id="dismissModalBtn" type="button" class="mt-5 w-full py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-black uppercase tracking-wider shadow-lg active:scale-95 transition-transform">
+            Dismiss & Continue Loading
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/scanner.js"></script>
+{% endblock %}

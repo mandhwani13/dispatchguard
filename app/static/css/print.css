@@ -1,0 +1,79 @@
+/* DispatchGuard Thermal Label & Gate Pass Print Stylesheet */
+
+@media print {
+    /* Hide on-screen navigation, buttons, and chrome */
+    .no-print,
+    header,
+    nav,
+    footer,
+    .print-controls,
+    button:not(.allow-print) {
+        display: none !important;
+    }
+
+    body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Thermal Label Printing (4" x 2" or 3" x 2") */
+    .thermal-sticker-page {
+        page-break-after: always;
+        break-after: page;
+        width: 100mm !important;
+        height: 50mm !important;
+        max-width: 4in !important;
+        max-height: 2in !important;
+        padding: 2.5mm !important;
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        border: 1px solid #000 !important;
+        overflow: hidden !important;
+    }
+
+    .thermal-sticker-page:last-child {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    /* Gate Pass A4 Printing */
+    .gate-pass-document {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 10mm !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    .gate-pass-table th,
+    .gate-pass-table td {
+        border-color: #333333 !important;
+    }
+}
+
+/* Screen Preview Styling for Thermal Labels */
+@media screen {
+    .thermal-sticker-page {
+        width: 4in;
+        min-height: 2in;
+        max-height: 2in;
+        padding: 8px 10px;
+        box-sizing: border-box;
+        border: 2px dashed #94a3b8;
+        background-color: #ffffff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin: 0 auto 1.5rem auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+}

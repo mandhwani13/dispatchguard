@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DispatchGuard Warehouse{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- KPI Summary Metrics -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
+        <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Dispatches</p>
+                <p class="text-2xl font-black text-slate-900 mt-1">{{ total_orders }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <i data-lucide="layers" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Packing Station</p>
+                <p class="text-2xl font-black text-slate-900 mt-1">{{ packing_orders }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i data-lucide="package" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-purple-600">Loading Dock</p>
+                <p class="text-2xl font-black text-slate-900 mt-1">{{ loading_orders }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <i data-lucide="truck" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Gate Passes Issued</p>
+                <p class="text-2xl font-black text-slate-900 mt-1">{{ completed_orders }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Dispatches Section Header & Filter Tabs -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/50">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+                    <i data-lucide="truck" class="w-5 h-5 text-emerald-600"></i>
+                    <span>Ready-Stock Dispatch Manifests</span>
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">Real-time status of orders, carton packing, and loading verification</p>
+            </div>
+
+            <!-- Filter Badges -->
+            <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs">
+                <a href="/" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if not current_status %}bg-slate-900 text-white font-semibold{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    All
+                </a>
+                <a href="/?status=PENDING" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if current_status == 'PENDING' %}bg-slate-900 text-white font-semibold{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Pending
+                </a>
+                <a href="/?status=PACKING" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if current_status == 'PACKING' %}bg-amber-600 text-white font-semibold{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Packing
+                </a>
+                <a href="/?status=LOADING" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if current_status == 'LOADING' %}bg-purple-600 text-white font-semibold{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Loading
+                </a>
+                <a href="/?status=COMPLETED" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if current_status == 'COMPLETED' %}bg-emerald-600 text-white font-semibold{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    Completed
+                </a>
+            </div>
+        </div>
+
+        {% if orders %}
+        <!-- Desktop Table View -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-700">
+                <thead class="bg-slate-100/75 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                    <tr>
+                        <th class="py-3 px-4">Order / Invoice</th>
+                        <th class="py-3 px-4">Customer & Transporter</th>
+                        <th class="py-3 px-4">Vehicle</th>
+                        <th class="py-3 px-4">Carton Progress</th>
+                        <th class="py-3 px-4">Piece Tally</th>
+                        <th class="py-3 px-4 text-center">Status</th>
+                        <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    {% for o in orders %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 font-mono font-bold text-slate-900">
+                            {{ o.order_number }}
+                            <div class="text-[11px] font-sans font-normal text-slate-400 mt-0.5">{{ o.created_at.strftime("%d %b %Y, %H:%M") }}</div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-semibold text-slate-900">{{ o.customer_name }}</div>
+                            <div class="text-xs text-slate-500 flex items-center space-x-1 mt-0.5">
+                                <i data-lucide="navigation" class="w-3 h-3 text-slate-400"></i>
+                                <span>{{ o.transporter_name or "Self / Direct Pickup" }}</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 font-mono font-medium text-slate-700">
+                            {{ o.vehicle_number or "—" }}
+                        </td>
+                        <td class="py-3.5 px-4 min-w-[150px]">
+                            <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                                <span>{{ o.scanned_cartons }} / {{ o.expected_cartons }} Boxes</span>
+                                <span class="text-slate-500">{{ o.carton_progress_pct }}%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                <div class="bg-emerald-500 h-2 rounded-full transition-all" style="width: {{ o.carton_progress_pct }}%"></div>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1">Packed: {{ o.total_packed_cartons }} of {{ o.expected_cartons }}</div>
+                        </td>
+                        <td class="py-3.5 px-4 min-w-[150px]">
+                            <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                                <span>{{ o.scanned_pieces }} / {{ o.expected_pieces }} Pcs</span>
+                                <span class="text-slate-500">{{ o.piece_progress_pct }}%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                <div class="bg-blue-500 h-2 rounded-full transition-all" style="width: {{ o.piece_progress_pct }}%"></div>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            {% if o.status == 'COMPLETED' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5"></span>
+                                Completed
+                            </span>
+                            {% elif o.status == 'LOADING' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-purple-600 mr-1.5 animate-pulse"></span>
+                                Loading
+                            </span>
+                            {% elif o.status == 'PACKING' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-600 mr-1.5"></span>
+                                Packing
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                Pending
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div class="flex items-center justify-end space-x-1.5">
+                                <a href="/orders/{{ o.id }}/packing" class="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold border border-amber-200 flex items-center space-x-1" title="Pack Cartons & Print QR Stickers">
+                                    <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                                    <span>Pack & QR</span>
+                                </a>
+
+                                {% if o.status != 'COMPLETED' %}
+                                <a href="/scanner?order_id={{ o.id }}" class="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold border border-emerald-200 flex items-center space-x-1" title="Scan at Loading Dock">
+                                    <i data-lucide="scan" class="w-3.5 h-3.5"></i>
+                                    <span>Scan Dock</span>
+                                </a>
+                                {% endif %}
+
+                                {% if o.status == 'COMPLETED' or o.is_fully_loaded %}
+                                <a href="/orders/{{ o.id }}/gate-pass" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center space-x-1 shadow-sm" title="View Digital Gate Pass">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                    <span>Gate Pass</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Card List View -->
+        <div class="md:hidden divide-y divide-slate-200">
+            {% for o in orders %}
+            <div class="p-4 space-y-3">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <span class="font-mono font-bold text-slate-900 text-base">{{ o.order_number }}</span>
+                        <h4 class="font-bold text-slate-800 text-sm mt-0.5">{{ o.customer_name }}</h4>
+                        <div class="text-xs text-slate-500 flex items-center space-x-1 mt-0.5">
+                            <i data-lucide="truck" class="w-3.5 h-3.5"></i>
+                            <span>{{ o.vehicle_number or "No Vehicle" }} • {{ o.transporter_name or "Direct" }}</span>
+                        </div>
+                    </div>
+                    <div>
+                        {% if o.status == 'COMPLETED' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Completed
+                        </span>
+                        {% elif o.status == 'LOADING' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                            Loading
+                        </span>
+                        {% elif o.status == 'PACKING' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            Packing
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                            Pending
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Progress Bars -->
+                <div class="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div>
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span>Cartons Loaded:</span>
+                            <span class="font-mono">{{ o.scanned_cartons }} / {{ o.expected_cartons }} ({{ o.carton_progress_pct }}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2 mt-1 overflow-hidden">
+                            <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ o.carton_progress_pct }}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span>Pieces Loaded:</span>
+                            <span class="font-mono">{{ o.scanned_pieces }} / {{ o.expected_pieces }} ({{ o.piece_progress_pct }}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2 mt-1 overflow-hidden">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width: {{ o.piece_progress_pct }}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <a href="/orders/{{ o.id }}/packing" class="py-2 px-3 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold text-center flex items-center justify-center space-x-1.5 shadow-sm">
+                        <i data-lucide="package" class="w-3.5 h-3.5"></i>
+                        <span>Pack & Labels</span>
+                    </a>
+                    
+                    {% if o.status == 'COMPLETED' or o.is_fully_loaded %}
+                    <a href="/orders/{{ o.id }}/gate-pass" class="py-2 px-3 rounded-lg bg-slate-900 text-white text-xs font-bold text-center flex items-center justify-center space-x-1.5 shadow-sm">
+                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span>Gate Pass</span>
+                    </a>
+                    {% else %}
+                    <a href="/scanner?order_id={{ o.id }}" class="py-2 px-3 rounded-lg bg-emerald-600 text-white text-xs font-bold text-center flex items-center justify-center space-x-1.5 shadow-sm">
+                        <i data-lucide="scan" class="w-3.5 h-3.5"></i>
+                        <span>Scan Dock</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-12 px-4">
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400 mb-3">
+                <i data-lucide="package-search" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800">No dispatch orders found</h3>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1">Get started by creating your first dispatch order or seed demo data for instant testing.</p>
+            <div class="mt-4 flex items-center justify-center space-x-3">
+                <button onclick="openNewOrderModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold shadow hover:bg-emerald-700">
+                    Create Dispatch Order
+                </button>
+                <a href="/api/demo/seed" class="px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200">
+                    Seed Demo Orders
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

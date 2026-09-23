@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Digital Gate Pass - {{ order.order_number }} - DispatchGuard{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+    <!-- Screen Navigation & Print Bar -->
+    <div class="no-print bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-center space-x-2">
+            <a href="/" class="text-slate-500 hover:text-slate-800 flex items-center space-x-1 text-xs font-semibold">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                <span>Dispatches</span>
+            </a>
+            <span class="text-slate-300">/</span>
+            <span class="text-xs font-bold text-slate-800 font-mono">{{ order.order_number }}</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Gate Pass Issued
+            </span>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <a href="/orders/{{ order.id }}/stickers" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center space-x-1">
+                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                <span>Carton Labels</span>
+            </a>
+            <button onclick="window.print()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow-sm">
+                <i data-lucide="printer" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>Print Official Gate Pass (A4)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Official Gate Pass Printable Document -->
+    <div class="gate-pass-document bg-white rounded-2xl border border-slate-300 shadow-xl p-6 sm:p-10 space-y-6 text-slate-900">
+        
+        <!-- Header -->
+        <div class="border-b-2 border-slate-900 pb-5">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-slate-950 text-white rounded-xl flex items-center justify-center font-black">
+                        <i data-lucide="shield-check" class="w-8 h-8 text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-black tracking-tight text-slate-950 uppercase">OFFICIAL DISPATCH GATE PASS</h1>
+                        <p class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Warehouse Management & Security Clearance System</p>
+                    </div>
+                </div>
+
+                <div class="text-right">
+                    <div class="inline-block bg-emerald-600 text-white px-3 py-1 rounded-md text-xs font-black tracking-wider uppercase">
+                        SECURITY CLEARED
+                    </div>
+                    <div class="text-xs font-mono font-bold text-slate-500 mt-1">
+                        PASS # GP-{{ order.id }}-{{ order.created_at.strftime("%Y%m%d") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order & Vehicle Metadata Matrix -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+            <div>
+                <span class="block text-[10px] uppercase font-bold text-slate-400">Dispatch Order #</span>
+                <span class="font-mono font-bold text-slate-900 text-sm">{{ order.order_number }}</span>
+            </div>
+            <div>
+                <span class="block text-[10px] uppercase font-bold text-slate-400">Vehicle Number</span>
+                <span class="font-mono font-bold text-slate-900 text-sm">{{ order.vehicle_number or "DIRECT / N/A" }}</span>
+            </div>
+            <div>
+                <span class="block text-[10px] uppercase font-bold text-slate-400">Transporter / Carrier</span>
+                <span class="font-semibold text-slate-900 text-sm">{{ order.transporter_name or "Self Pickup" }}</span>
+            </div>
+            <div>
+                <span class="block text-[10px] uppercase font-bold text-slate-400">Dispatch Timestamp</span>
+                <span class="font-mono text-slate-900 text-xs font-semibold">
+                    {{ order.completed_at.strftime("%d-%b-%Y %H:%M UTC") if order.completed_at else order.created_at.strftime("%d-%b-%Y %H:%M UTC") }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Consignee Details -->
+        <div class="border border-slate-200 rounded-xl p-4">
+            <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Consignee / Customer Details</h3>
+            <p class="text-base font-bold text-slate-900">{{ order.customer_name }}</p>
+        </div>
+
+        <!-- Reconciliation Audit Summary Card -->
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Cartons Verified</span>
+                    <div class="text-2xl font-black text-emerald-950 font-mono mt-0.5">
+                        {{ order.scanned_cartons }} <span class="text-sm font-normal text-emerald-700">/ {{ order.expected_cartons }}</span>
+                    </div>
+                    <span class="text-[10px] text-emerald-700 font-semibold">✓ 100% Physical Count Matched</span>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-emerald-200/60 text-emerald-800 flex items-center justify-center">
+                    <i data-lucide="check" class="w-6 h-6 stroke-[3]"></i>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-bold text-blue-800 uppercase tracking-wider">Pieces Reconciled</span>
+                    <div class="text-2xl font-black text-blue-950 font-mono mt-0.5">
+                        {{ order.scanned_pieces }} <span class="text-sm font-normal text-blue-700">/ {{ order.expected_pieces }}</span>
+                    </div>
+                    <span class="text-[10px] text-blue-700 font-semibold">✓ Zero Variance Detected</span>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-blue-200/60 text-blue-800 flex items-center justify-center">
+                    <i data-lucide="check" class="w-6 h-6 stroke-[3]"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carton Manifest Breakdown Table -->
+        <div class="space-y-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Loaded Carton Manifest</h3>
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <table class="w-full text-left text-xs gate-pass-table">
+                    <thead class="bg-slate-100 font-bold uppercase tracking-wider text-slate-600 border-b border-slate-200">
+                        <tr>
+                            <th class="py-2.5 px-3">Box #</th>
+                            <th class="py-2.5 px-3">Piece Count</th>
+                            <th class="py-2.5 px-3">Verification Timestamp</th>
+                            <th class="py-2.5 px-3">Notes / Batch</th>
+                            <th class="py-2.5 px-3 text-right">Dock Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono">
+                        {% for c in order.cartons %}
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-2 px-3 font-bold text-slate-900">BOX {{ c.carton_number }}</td>
+                            <td class="py-2 px-3 font-bold text-slate-800">{{ c.piece_count }} PCS</td>
+                            <td class="py-2 px-3 text-slate-600">{{ c.scanned_at.strftime("%H:%M:%S") if c.scanned_at else "MANUAL" }}</td>
+                            <td class="py-2 px-3 font-sans text-slate-500">{{ c.notes or "—" }}</td>
+                            <td class="py-2 px-3 text-right font-sans font-bold text-emerald-700">✓ VERIFIED</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gate Pass Security Verification Barcode & Sign-off Section -->
+        <div class="pt-6 border-t-2 border-slate-900 grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
+            <!-- Security QR Code -->
+            <div class="text-center sm:text-left flex items-center space-x-3">
+                <div class="p-1 bg-white border border-slate-300 rounded-lg shadow-sm inline-block">
+                    <img src="/api/cartons/{{ order.cartons[0].id if order.cartons else 1 }}/qr.png" alt="Gate Verification QR" class="w-20 h-20">
+                </div>
+                <div class="text-left space-y-0.5">
+                    <span class="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Security Gate Scan</span>
+                    <span class="block text-xs font-mono font-bold text-slate-800">ENCRYPTED AUTH</span>
+                    <span class="block text-[9px] text-slate-500">Scan at exit barrier to confirm vehicle clearance</span>
+                </div>
+            </div>
+
+            <!-- Driver / Transporter Signature -->
+            <div class="text-center space-y-1">
+                <div class="h-12 border-b border-dashed border-slate-400"></div>
+                <span class="block text-[10px] uppercase font-bold text-slate-600">Driver Signature</span>
+                <span class="block text-[9px] text-slate-400">Received in good condition</span>
+            </div>
+
+            <!-- Supervisor Digital Sign-off Badge -->
+            <div class="text-center space-y-1">
+                <div class="h-12 flex items-center justify-center">
+                    <span class="border-2 border-emerald-600 text-emerald-800 font-black text-xs px-3 py-1 rounded rotate-[-4deg] tracking-wider uppercase inline-block">
+                        ✓ DISPATCH VERIFIED
+                    </span>
+                </div>
+                <span class="block text-[10px] uppercase font-bold text-slate-600">Warehouse Supervisor</span>
+                <span class="block text-[9px] text-slate-400">Digitally Authenticated</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
