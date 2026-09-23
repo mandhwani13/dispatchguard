@@ -2,6 +2,8 @@
 
 > **Ready-Stock Dispatch & Carton Verification Gate-Pass System for Manufacturing Warehouses**
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/mandhwani13/dispatchguard)
+
 DispatchGuard is a mobile-first, production-grade warehouse dispatch application. It eliminates dock loading errors, prevents wrong-truck dispatches, thwarts duplicate carton loading, and enforces 100% carton & piece count reconciliation before issuing authenticated digital Gate Passes.
 
 ---
