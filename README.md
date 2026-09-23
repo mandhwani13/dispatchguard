@@ -83,18 +83,16 @@ Open your browser at **`http://localhost:8000`**.
 
 ---
 
-## 🚢 Render Cloud Deployment
+## 🚢 100% Free Render Cloud Deployment
 
-DispatchGuard includes a ready-to-deploy `render.yaml` specification:
+Render recently started charging ($7/mo) for managed PostgreSQL instances in blueprints. To keep DispatchGuard **100% Free with zero credit card required**:
 
-1. Push this repository to GitHub or GitLab.
-2. Log in to [Render Dashboard](https://dashboard.render.com).
-3. Click **New +** ➔ **Blueprint**.
-4. Connect your repository. Render will automatically detect `render.yaml`:
-   - Provisions a managed PostgreSQL database (`dispatchguard-db`).
-   - Provisions the FastAPI web service (`dispatchguard-web`).
-   - Automatically injects `DATABASE_URL` and `SECRET_KEY`.
-5. Click **Apply**. Your production warehouse system will be live in 2 minutes!
+1. Click the **Deploy to Render** button above or use:
+   👉 **[Deploy to Render (Free Tier)](https://render.com/deploy?repo=https://github.com/mandhwani13/dispatchguard)**
+2. Select the **Free Plan** (`plan: free`). Render will deploy the web service at **$0 / month** with no payment details needed!
+3. By default, DispatchGuard automatically runs with zero-config SQLite.
+4. **(Optional) Free Cloud PostgreSQL**:
+   If you want a free hosted PostgreSQL database without paying Render, you can create a free database on [Neon.tech](https://neon.tech) or [Supabase.com](https://supabase.com) (both 100% free forever, no credit card required), copy the Connection String, and paste it into the `DATABASE_URL` environment variable on Render!
 
 ---
 
